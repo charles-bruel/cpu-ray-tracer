@@ -1,21 +1,36 @@
 #include "main.h"
 
-#define WIDTH 320
-#define HEIGHT 240
+#define WIDTH 160
+#define HEIGHT 120
 #define NUM_CHANNELS 3
 #define BITS_P_PIXEL NUM_CHANNELS * 8
 #define HEADER_SIZE 14
 #define DIB_HEADER_SIZE 40 //(BITMAPINFOHEADER)
 
 int main() {
+    scene scene = create_test_scene();
+
     color *data = malloc(WIDTH * HEIGHT * sizeof(color));
-    generate(data, WIDTH, HEIGHT);
+    int temp = generate(data, WIDTH, HEIGHT, &scene);
+    printf("%d\n", temp);
     char *converted_array = convert_for_writing(data, WIDTH, HEIGHT, 1.0f);
     write_file(converted_array, WIDTH, HEIGHT);
     free(converted_array);
     free(data);
 
     return 0;
+}
+
+scene create_test_scene() {
+    camera *camera = malloc(sizeof(camera));
+    (*camera).pos = vec(0, 0, 0);
+    (*camera).view_dir = vec(1, 0, 0);
+    scene scene;
+    scene.camera = camera;
+    scene.ambient = col(0.7f, 0.9f, 1.0f);
+    scene.ambient_strength = 0.1f;
+    
+    return scene;
 }
 
 void write_file(char *data, unsigned int width, unsigned int height) {
@@ -93,6 +108,22 @@ char *convert_for_writing(color *array, unsigned int width, unsigned int height,
         }
     }
 
+    return to_return;
+}
+
+vec3 vec(float x, float y, float z) {
+    vec3 to_return;
+    to_return.x = x;
+    to_return.y = y;
+    to_return.z = z;
+    return to_return;
+}
+
+color col(float r, float g, float b) {
+    color to_return;
+    to_return.r = r;
+    to_return.g = g;
+    to_return.b = b;
     return to_return;
 }
 

@@ -2,62 +2,52 @@
 
 .global generate
 #void generate(color *array, unsigned int width, unsigned int height);
-#*array is in rcx, width is in edx, and height is in r8
+#*array is in rcx, width is in edx, height is in r8, and scene is in r9
 generate:
-    push r9
-    mov r9, r8
-    mov eax, edx
-    movss xmm0, DWORD PTR .LC0[rip]
+    mov r11, r9
 
-    #r8 is height
-    #r9 is y-axis counter
-    #eax is width
-    #edx is the x-axis counter
+    push rbx
+    push rsi
 
-    cvtsi2ss xmm5, eax
-    mov rbx, r8
-    cvtsi2ss xmm4, ebx
-    #xmm5 is the height as a float
-    #xmm4 is the width as a float
+    xor eax, eax
 
+    mov rsi, r8
+    mov r10, rdx
+    mov r9, rsi
+
+    #esi is height
+    #r10 is y-axis counter
+    #edx is width
+    #r9 is the x-axis counter
 loop_1:
-    mov edx, eax
+    mov r9, rsi
 loop_2:
     #loop body
     #red
-    cvtsi2ss xmm0, edx
-    divss xmm0, xmm5
+    movss xmm0, [r11+48]
     movss [rcx], xmm0
     add rcx, 4
 
     #green
-    cvtsi2ss xmm3, edx
-    mov rbx, r9
-    cvtsi2ss xmm2, ebx
-    mulss xmm3, xmm3
-    mulss xmm2, xmm2
-    addss xmm2, xmm3
-    sqrtss xmm2, xmm2
-    movss xmm0, DWORD PTR .LC1[rip]
-    addss xmm2, xmm0
-    divss xmm0, xmm2
+    movss xmm0, [r11+52]
     movss [rcx], xmm0
     add rcx, 4
 
     #blue
-    mov rbx, r9
-    cvtsi2ss xmm0, ebx
-    divss xmm0, xmm4
+    movss xmm0, [r11+56]
     movss [rcx], xmm0
     add rcx, 4
 
-    dec edx
-    jnz loop_2
+    inc eax
 
     dec r9
+    jnz loop_2
+
+    dec r10
     jnz loop_1
 
-    pop r9
+    pop rsi
+    pop rbx
 
     ret
 .LC0:

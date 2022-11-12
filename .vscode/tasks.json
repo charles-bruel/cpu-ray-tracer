@@ -23,6 +23,7 @@
             "args": [
                 "${workspaceFolder}\\src\\main.c",
                 "${workspaceFolder}\\src\\asm.s",
+                "-Wpadded",
                 "-m64",
                 "-o",
                 "${workspaceFolder}\\target\\main.exe",
