@@ -17,8 +17,9 @@ typedef struct {
 } vec3;
 
 typedef struct {
-    vec3 pos;//0
-    vec3 view_dir;//12
+    vec3 pos;//0-12
+    vec3 view_dir;//12-24
+    float fov;//24-28
 } camera;
 
 typedef struct {

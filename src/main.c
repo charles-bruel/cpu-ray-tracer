@@ -13,7 +13,7 @@ int main() {
     color *data = malloc(WIDTH * HEIGHT * sizeof(color));
     int temp = generate(data, WIDTH, HEIGHT, &scene);
     printf("%d\n", temp);
-    char *converted_array = convert_for_writing(data, WIDTH, HEIGHT, 1.0f);
+    char *converted_array = convert_for_writing(data, WIDTH, HEIGHT, 1);
     write_file(converted_array, WIDTH, HEIGHT);
     free(converted_array);
     free(data);
@@ -22,13 +22,18 @@ int main() {
 }
 
 scene create_test_scene() {
-    camera *camera = malloc(sizeof(camera));
+    unsigned int size = sizeof(camera);
+    camera *camera = malloc(size);
     (*camera).pos = vec(0, 0, 0);
     (*camera).view_dir = vec(1, 0, 0);
+    (*camera).fov = 70.0f * 0.0174533f;
     scene scene;
     scene.camera = camera;
     scene.ambient = col(0.7f, 0.9f, 1.0f);
     scene.ambient_strength = 0.1f;
+    scene.num_spheres = 1;
+    scene.spheres = malloc(1 * sizeof(vec3));
+    scene.spheres[0] = vec(5, 0, 0);
     
     return scene;
 }
@@ -77,7 +82,7 @@ void write_file(char *data, unsigned int width, unsigned int height) {
     for(int i = 0;i < height;i ++) {
         memcpy(image_data + row_size * i, data + row_size_og * i, row_size_og);
     }
-
+    
     FILE *write_ptr = fopen("..\\out\\img.bmp", "wb");//https://stackoverflow.com/questions/17598572/read-and-write-to-binary-files-in-c
     fwrite(buffer, 1, size, write_ptr);
     fclose(write_ptr);
