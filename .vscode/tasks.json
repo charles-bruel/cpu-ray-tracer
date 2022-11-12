@@ -21,10 +21,12 @@
             "label": "C/C++: gcc.exe build active file",
             "command": "gcc",
             "args": [
-                "-g",
                 "${workspaceFolder}\\src\\main.c",
+                "${workspaceFolder}\\src\\asm.s",
+                "-m64",
                 "-o",
-                "${workspaceFolder}\\target\\${fileBasenameNoExtension}.exe"
+                "${workspaceFolder}\\target\\main.exe",
+                "-g",
             ],
             "options": {
                 "cwd": "${workspaceFolder}\\src"

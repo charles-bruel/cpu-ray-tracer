@@ -96,13 +96,13 @@ char *convert_for_writing(color *array, unsigned int width, unsigned int height,
     return to_return;
 }
 
-void generate(color *array, unsigned int width, unsigned int height) {
-    for(int i = 0;i < width;i ++) {
-        for(int j = 0;j < height;j ++) {
-            int index = j * width + i;
-            array[index].r = (float) j / width;
-            array[index].g = 0;
-            array[index].b = (float) i / width;
-        }
-    }
-}
+// void generate(color *array, unsigned int width, unsigned int height) {
+//     for(int i = 0;i < width;i ++) {
+//         for(int j = 0;j < height;j ++) {
+//             int index = j * width + i;
+//             array[index].r = (float) j / width;
+//             array[index].g = 0;
+//             array[index].b = (float) i / width;
+//         }
+//     }
+// }

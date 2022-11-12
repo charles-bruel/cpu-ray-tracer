@@ -13,4 +13,5 @@ typedef struct {
 
 char *convert_for_writing(color *array, unsigned int width, unsigned int height, float max_value);
 void write_file(char *data, unsigned int width, unsigned int height);
-void generate(color *array, unsigned int width, unsigned int height);
+extern void generate(color *array, unsigned int width, unsigned int height);
+// void generate(color *array, unsigned int width, unsigned int height);
