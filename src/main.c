@@ -1,7 +1,7 @@
 #include "main.h"
 
-#define WIDTH 192
-#define HEIGHT 108
+#define WIDTH 1920
+#define HEIGHT 1080
 #define NUM_CHANNELS 3
 #define BITS_P_PIXEL NUM_CHANNELS * 8
 #define HEADER_SIZE 14
@@ -10,8 +10,21 @@
 extern void test_quad(float *a, float *b, float *c);
 extern int asm_rand();
 
+float rand_float() {
+    uint64_t next_val = next();
+    uint32_t val = next_val;
+    float float_base = (float) val;
+    float_base /= 2147483647.0f;
+    float_base -= 1;
+    return float_base;
+}
+
 int main() {
-    srand(time(NULL));
+    //Seed rand
+    s[0] = 234932423432;
+    s[1] = 382432842304;
+    s[2] = 590243523459;
+    s[3] = 523405239023;
 
     clock_t start, end;
     double cpu_time_used;
@@ -50,7 +63,7 @@ scene create_test_scene() {
     scene.spheres[0] = sph(vec(5, 0, 0.5), 0.5, 0);
     scene.spheres[1] = sph(vec(2, -0.5, 0), 0.1, 1);
     scene.spheres[2] = sph(vec(6, 0, 0), 0.1, 1);
-    scene.spheres[3] = sph(vec(3, 0.25, 0.75), 0.1, 1);
+    scene.spheres[3] = sph(vec(3, 0.25, 0.625), 0.1, 1);
     scene.spheres[4] = sph(vec(2, 0.5, 0), 0.05, 2);
 
     scene.num_materials = 3;

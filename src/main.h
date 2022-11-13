@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "rand.c"
+
 #pragma pack(1)
 typedef struct {
     float r;

@@ -1,9 +1,11 @@
 .intel_syntax noprefix
 
 .LC9: #Main variables
-    .long 32 #Number of rays
+    .long 4 #Number of rays per bounce
 .LC10:
-    .long 3 #Recursion depth
+    .long 4 #Recursion depth
+.LC11:
+    .long 16 #Number of samples
 
 .global test_quad
 test_quad:
@@ -75,7 +77,7 @@ generate:
     mov r9, rdx
     loop_2:
         #loop body
-        
+
         push r15
         push rax
         push rsi
@@ -83,36 +85,77 @@ generate:
         push rdx
         push r9
 
-        #load the camera position and angle
-        #r12 will contain the pointer to the camera struct
-        mov r12, [r11+40]
-        sub rsp, 24 #Pushing onto stack
-        movss xmm0, [r12+0]
-        movss xmm1, [r12+4]
-        movss xmm2, [r12+8]
-
-        movss [rsp+0], xmm0
-        movss [rsp+4], xmm1
-        movss [rsp+8], xmm2
-        #Position loaded
-
-        movss xmm0, [r12+12]
-        movss xmm1, [r12+16]
-        movss xmm2, [r12+20]
-
-        call adjust_ray_angle
-
-        movss [rsp+12], xmm0
-        movss [rsp+16], xmm1
-        movss [rsp+20], xmm2
-        #Rotation loaded
-
         push rdx
-        mov edx, .LC10 [rip] #Max bounces
-        mov r8, rdx
+        mov edx, .LC11 [rip] #Samples
+        mov r13, rdx #r13 contains the number of samples
         pop rdx
 
-        call ray
+        pxor xmm10, xmm10
+        pxor xmm11, xmm11
+        pxor xmm12, xmm12
+
+        generate_ray_loop:
+            push r13
+            push rsi
+            push rdx
+            push r10
+            push r9
+
+            sub rsp, 24
+            movss [rsp+0], xmm10
+            movss [rsp+4], xmm11
+            movss [rsp+8], xmm12
+
+            #load the camera position and angle
+            #r12 will contain the pointer to the camera struct
+            mov r12, [r11+40]
+            sub rsp, 24 #Pushing onto stack
+            movss xmm0, [r12+0]
+            movss xmm1, [r12+4]
+            movss xmm2, [r12+8]
+a:
+            movss [rsp+0], xmm0
+            movss [rsp+4], xmm1
+            movss [rsp+8], xmm2
+            #Position loaded
+
+            movss xmm0, [r12+12]
+            movss xmm1, [r12+16]
+            movss xmm2, [r12+20]
+
+            call adjust_ray_angle
+
+            movss [rsp+12], xmm0
+            movss [rsp+16], xmm1
+            movss [rsp+20], xmm2
+            #Rotation loaded
+
+            push rdx
+            mov edx, .LC10 [rip] #Max bounces
+            mov r8, rdx
+            pop rdx
+
+            call ray
+
+            movss xmm10, [rsp+0]
+            movss xmm11, [rsp+4]
+            movss xmm12, [rsp+8]
+            add rsp, 24
+
+            addss xmm10, xmm0
+            addss xmm11, xmm1
+            addss xmm12, xmm2
+
+
+            pop r9
+            pop r10
+            pop rdx
+            pop rsi
+            pop r13
+
+            dec r13
+            cmp r13, 0
+            jg generate_ray_loop
 
         pop r9
         pop rdx
@@ -121,9 +164,18 @@ generate:
         pop rax
         pop r15
 
-        movss [r15+0], xmm0
-        movss [r15+4], xmm1
-        movss [r15+8], xmm2
+        push rdx
+        mov edx, .LC11 [rip]
+        cvtsi2ss xmm13, edx #Division part of average
+        pop rdx
+
+        divss xmm10, xmm13 #Final from all ray R
+        divss xmm11, xmm13 #Final from all ray G
+        divss xmm12, xmm13 #Final from all ray B
+
+        movss [r15+0], xmm10
+        movss [r15+4], xmm11
+        movss [r15+8], xmm12
         add r15, 12
 
         inc eax
@@ -388,79 +440,79 @@ ray:
         mov edx, .LC9 [rip] #Iterations left
         mov r12, rdx
         ray_hit_scatter_loop:
-        movss xmm0, [rsp+0] #Ray hit pos x
-        movss xmm1, [rsp+4] #Ray hit pos y
-        movss xmm2, [rsp+8] #Ray hit pos z
+            movss xmm0, [rsp+0] #Ray hit pos x
+            movss xmm1, [rsp+4] #Ray hit pos y
+            movss xmm2, [rsp+8] #Ray hit pos z
 
-        movss xmm3, [rbp+16] #Ray start pos x
-        movss xmm4, [rbp+20] #Ray start pos y
-        movss xmm5, [rbp+24] #Ray start pos z
+            movss xmm3, [rbp+16] #Ray start pos x
+            movss xmm4, [rbp+20] #Ray start pos y
+            movss xmm5, [rbp+24] #Ray start pos z
 
-        subss xmm0, xmm3 #Unnormalized ray direction x
-        subss xmm1, xmm4 #Unnormalized ray direction y
-        subss xmm2, xmm5 #Unnormalized ray direction z
+            subss xmm0, xmm3 #Unnormalized ray direction x
+            subss xmm1, xmm4 #Unnormalized ray direction y
+            subss xmm2, xmm5 #Unnormalized ray direction z
 
-        call normalize
+            call normalize
 
-        movss xmm3, [rsp+12] #Hit normal x
-        movss xmm4, [rsp+16] #Hit normal y
-        movss xmm5, [rsp+20] #Hit normal z
+            movss xmm3, [rsp+12] #Hit normal x
+            movss xmm4, [rsp+16] #Hit normal y
+            movss xmm5, [rsp+20] #Hit normal z
 
-        call reflect #Next ray direction for purely specular in xmm0 - xmm2
+            call reflect #Next ray direction for purely specular in xmm0 - xmm2
 
-        movss xmm3, [rsp+12] #Hit normal x
-        movss xmm4, [rsp+16] #Hit normal y
-        movss xmm5, [rsp+20] #Hit normal z
+            movss xmm3, [rsp+12] #Hit normal x
+            movss xmm4, [rsp+16] #Hit normal y
+            movss xmm5, [rsp+20] #Hit normal z
 
-        call random_ray #Next ray direction for purely diffuse in xmm3 - xmm5
+            call random_ray #Next ray direction for purely diffuse in xmm3 - xmm5
 
-        movss xmm6, [rcx+16] #Roughness
-        call slerp #Places final ray in xmm0 - xmm2
+            movss xmm6, [rcx+16] #Roughness
+            call slerp #Places final ray in xmm0 - xmm2
 
-        movss xmm3, [rsp+0] #Next ray start pos x
-        movss xmm4, [rsp+4] #Next ray start pos y
-        movss xmm5, [rsp+8] #Next ray start pos z
+            movss xmm3, [rsp+0] #Next ray start pos x
+            movss xmm4, [rsp+4] #Next ray start pos y
+            movss xmm5, [rsp+8] #Next ray start pos z
 
-        push r12
-        push r8
-        push rcx
-        push rbp
-        sub rsp, 16
-        movss [rsp+0], xmm13
-        movss [rsp+4], xmm14
-        movss [rsp+8], xmm15
+            push r12
+            push r8
+            push rcx
+            push rbp
+            sub rsp, 16
+            movss [rsp+0], xmm13
+            movss [rsp+4], xmm14
+            movss [rsp+8], xmm15
 
-        dec r8
+            dec r8
 
-        sub rsp, 40 #Pushing onto stack
-        movss [rsp+12], xmm0
-        movss [rsp+16], xmm1
-        movss [rsp+20], xmm2 #Ray direction
+            sub rsp, 40 #Pushing onto stack
+            movss [rsp+12], xmm0
+            movss [rsp+16], xmm1
+            movss [rsp+20], xmm2 #Ray direction
 
-        movss [rsp+ 0], xmm3
-        movss [rsp+ 4], xmm4
-        movss [rsp+ 8], xmm5 #Start position
+            movss [rsp+ 0], xmm3
+            movss [rsp+ 4], xmm4
+            movss [rsp+ 8], xmm5 #Start position
 
-        call ray
-        add rsp, 16
-        
-        movss xmm13, [rsp+0]
-        movss xmm14, [rsp+4]
-        movss xmm15, [rsp+8]
-        add rsp, 16
+            call ray
+            add rsp, 16
 
-        addss xmm13, xmm0
-        addss xmm14, xmm1
-        addss xmm15, xmm2 #Store for running average
+            movss xmm13, [rsp+0]
+            movss xmm14, [rsp+4]
+            movss xmm15, [rsp+8]
+            add rsp, 16
 
-        pop rbp
-        pop rcx
-        pop r8
-        pop r12
+            addss xmm13, xmm0
+            addss xmm14, xmm1
+            addss xmm15, xmm2 #Store for running average
 
-        dec r12
-        cmp r12, 0
-        jg ray_hit_scatter_loop
+            pop rbp
+            pop rcx
+            pop r8
+            pop r12
+
+            dec r12
+            cmp r12, 0
+            jg ray_hit_scatter_loop
 
         #END LOOP
 
@@ -839,28 +891,28 @@ reflect:
 #Generates a random float [-1, 1]
 #Outputs: The random float in xmm0
 #Writes: xmm0
-rand_float:
-    push rcx
-    push rax
-    sub rsp, 4
-    movss [rsp], xmm1
+// rand_float:
+//     push rcx
+//     push rax
+//     sub rsp, 4
+//     movss [rsp], xmm1
 
-    call asm_rand #Random int now in eax
-    mov rcx, 511
-    and rax, rcx #rax now has a number from [0, 511]
-    cvtsi2ss xmm0, rax #xmm0 now has a number from [0, 511]
-    movss xmm1, DWORD PTR .LC3[rip] #xmm1 has 255.5
-    divss xmm0, xmm1 #xmm0 now has a number from [0, 2]
-    movss xmm1, DWORD PTR .LC6[rip] #xmm1 has -1
-    subss xmm0, xmm1 #xmm0 now has a number from [-1, 1]
+//     call asm_rand #Random int now in eax
+//     mov rcx, 16383
+//     and rax, rcx #rax now has a number from [0, 16383]
+//     cvtsi2ss xmm0, rax #xmm0 now has a number from [0, 16383]
+//     movss xmm1, DWORD PTR .LC3[rip] #xmm1 has 16383.5
+//     divss xmm0, xmm1 #xmm0 now has a number from [0, 2]
+//     movss xmm1, DWORD PTR .LC6[rip] #xmm1 has -1
+//     subss xmm0, xmm1 #xmm0 now has a number from [-1, 1]
 
-    movss xmm1, [rsp]
-    add rsp, 4
-    pop rax
-    pop rcx
-    ret
-.LC3:
-    .long 1132429312 #255.5
+//     movss xmm1, [rsp]
+//     add rsp, 4
+//     pop rax
+//     pop rcx
+//     ret
+// .LC3:
+//     .long 1182793216 #16383.5
 #Creates a random ray from a surface normal
 #Inputs: The surface normal in xmm3 - xmm5
 #Outputs: The random ray in xmm3 - xmm5
