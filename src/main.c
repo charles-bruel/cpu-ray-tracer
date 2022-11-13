@@ -32,8 +32,8 @@ scene create_test_scene() {
     scene.ambient = col(0.7f, 0.9f, 1.0f);
     scene.ambient_strength = 0.1f;
     scene.num_spheres = 1;
-    scene.spheres = malloc(1 * sizeof(vec3));
-    scene.spheres[0] = vec(5, 0, 0);
+    scene.spheres = malloc(scene.num_spheres * sizeof(sphere));
+    scene.spheres[0] = sph(vec(5, 0, 0), 2);
     
     return scene;
 }
@@ -129,6 +129,13 @@ color col(float r, float g, float b) {
     to_return.r = r;
     to_return.g = g;
     to_return.b = b;
+    return to_return;
+}
+
+sphere sph(vec3 pos, float r) {
+    sphere to_return;
+    to_return.pos = pos;
+    to_return.r = r;
     return to_return;
 }
 

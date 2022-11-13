@@ -17,16 +17,31 @@ typedef struct {
 } vec3;
 
 typedef struct {
+    vec3 pos;
+    float r;
+} sphere;
+
+typedef struct {
+    vec3 pos1;
+    vec3 pos2;
+    vec3 pos3;
+} triangle;
+
+typedef struct {
     vec3 pos;//0-12
     vec3 view_dir;//12-24
     float fov;//24-28
 } camera;
 
 typedef struct {
-    vec3 *spheres;//0-8
-    vec3 *tris_1;//8-16
-    vec3 *tris_2;//16-24
-    vec3 *tris_3;//24-32
+    color color;
+} material;
+
+typedef struct {
+    sphere *spheres;//0-8
+    triangle *tris;//8-16
+    material **sphere_materials;//16-24
+    material **triangle_materials;//24-32
     unsigned int num_spheres;//32-36
     unsigned int num_tris;//36-40
     camera *camera;//40-48
@@ -40,4 +55,6 @@ void write_file(char *data, unsigned int width, unsigned int height);
 extern int generate(color *array, unsigned int width, unsigned int height, scene *scene);
 vec3 vec(float x, float y, float z);
 color col(float r, float g, float b);
+triangle tri(vec3 pos1, vec3 pos2, vec3 pos3);
+sphere sph(vec3 pos, float r);
 // void generate(color *array, unsigned int width, unsigned int height);
