@@ -273,6 +273,7 @@ ray:
     imul edx, 20
     add r9, rdx
     mov edx, -1 #Contains material hit ID
+    sub rsp, 24
     ray_sphere_loop:
         #Load information for intersection call into stack
         sub rsp, 40
@@ -314,7 +315,39 @@ ray:
         add rcx, 20
         cmp rcx, r9
         jb ray_sphere_loop
+        jmp ray_end_sphere_loop
 
+        ray_hit_sphere:
+            #Hit a sphere; if closer save the distance and material
+            comiss xmm3, xmm6
+            ja ray_hit_sphere_return #Not closer, ignore
+
+            movss xmm6, xmm3 #Save distance
+            mov edx, [rcx+16] #Material
+
+            movss [rsp+ 0], xmm0 #x-pos
+            movss [rsp+ 4], xmm1 #y-pos
+            movss [rsp+ 8], xmm2 #z-pos
+
+            #To get the normal position, we will subtract the sphere center from the position
+            #then normalize the position
+
+            movss xmm4, [rcx+0]
+            subss xmm0, xmm4 #x-offset from center
+            movss xmm4, [rcx+4]
+            subss xmm1, xmm4 #y-offset from center
+            movss xmm4, [rcx+8]
+            subss xmm2, xmm4 #z-offset from center
+
+            call normalize
+
+            movss [rsp+12], xmm0 #x-normal
+            movss [rsp+16], xmm1 #y-normal
+            movss [rsp+20], xmm2 #z-normal
+
+            jmp ray_hit_sphere_return
+
+    ray_end_sphere_loop:
     #Check if we hit a ray
     cmp edx, -1
     jne ray_hit
@@ -326,29 +359,36 @@ ray:
     movss xmm2, [r11+56]
     jmp ray_end
 
-    ray_hit_sphere:
-    #Hit a sphere; if closer save the distance and material
-    comiss xmm3, xmm6
-    ja ray_hit_sphere_return #Not closer, ignore
-
-    movss xmm6, xmm3
-    mov edx, [rcx+16]
-
-    jmp ray_hit_sphere_return
     ray_hit:
     mov rcx, [r11+16] #Contains base of materials array
     imul edx, 12 #Contains material offset
     add rcx, rdx #Contains the material
 
-    movss xmm0, [rcx+0]
+    movss xmm0, [rcx+0] #Copy material color
     movss xmm1, [rcx+4]
     movss xmm2, [rcx+8]
-    ray_end:
-    pop rsp
 
+    // #Normals test
+    // movss xmm0, [rsp+12]
+    // movss xmm1, [rsp+16]
+    // movss xmm2, [rsp+20]
+    // movss xmm3, DWORD PTR .LC1[rip]
+    // addss xmm0, xmm3
+    // addss xmm1, xmm3
+    // addss xmm2, xmm3
+    // movss xmm3, DWORD PTR .LC2[rip]
+    // mulss xmm0, xmm3
+    // mulss xmm1, xmm3
+    // mulss xmm2, xmm3
+
+    ray_end:
+    add rsp, 24
+    pop rsp
     ret 24 #Cleans up stack passed parameters
 .LC0:
-    .long   1148846080 #1000
+    .long 1148846080 #1000
+.LC1:
+    .long 1065353216
 #Finds the roots r and s of the equation ax^2 + bx + c = 0
 #Inputs: a, b, and c in xmm0, xmm1, and xmm2
 #Outputs: r and s in xmm0 and xmm1. No guaruntee to order
@@ -554,24 +594,24 @@ line_sphere_finish:
     #This should be improved, but it's fine for now
 
     #Begin X
-    movss xmm5, [rsp + 16]
-    movss xmm0, [rsp + 28]
+    movss xmm0, [rsp + 16]
+    movss xmm4, [rsp + 28]
     subss xmm4, xmm0 #xmm4 contains the x component of the normalize direction vec
     mulss xmm4, xmm3 #xmm4 contains the x component of the offset vec
     addss xmm0, xmm4
     #End X
 
     #Begin Y
-    movss xmm5, [rsp + 20]
-    movss xmm1, [rsp + 32]
+    movss xmm1, [rsp + 20]
+    movss xmm4, [rsp + 32]
     subss xmm4, xmm1 #xmm4 contains the y component of the normalize direction vec
     mulss xmm4, xmm3 #xmm4 contains the y component of the offset vec
     addss xmm1, xmm4
     #End Y
 
     #Begin Z
-    movss xmm5, [rsp + 24]
-    movss xmm2, [rsp + 36]
+    movss xmm2, [rsp + 24]
+    movss xmm4, [rsp + 36]
     subss xmm4, xmm2 #xmm4 contains the z component of the normalize direction vec
     mulss xmm4, xmm3 #xmm4 contains the z component of the offset vec
     addss xmm2, xmm4
@@ -584,3 +624,32 @@ line_sphere_finish:
     line_sphere_return:
     pop rsp
     ret 40
+
+
+#Normalizes a vecotr in xmm0, xmm1, and xmm2 to length 1
+#Inputs: The vector in xmm0 - xmm2
+#Outputs: The normalized vector in xmm0 - xmm2
+#Writes: xmm0 - xmm2
+normalize:
+    sub rsp, 8
+    movss [rsp+0], xmm3 #Scratch space
+    movss [rsp+4], xmm4
+
+    movss xmm3, xmm0
+    mulss xmm3, xmm3 #x^2
+    movss xmm4, xmm1
+    mulss xmm4, xmm4 #y^2
+    addss xmm3, xmm4
+    movss xmm4, xmm2
+    mulss xmm4, xmm4 #z^2
+    addss xmm3, xmm4 #Length squared in xmm3
+    sqrtss xmm3, xmm3 #Length in xmm3
+
+    divss xmm0, xmm3
+    divss xmm1, xmm3
+    divss xmm2, xmm3
+
+    movss xmm3, [rsp+0]
+    movss xmm4, [rsp+4]
+    add rsp, 8
+    ret
