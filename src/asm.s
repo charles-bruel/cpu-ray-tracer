@@ -123,10 +123,6 @@ loop_2:
     pop rbx
 
     ret
-.LC0:
-    .long   1065353216
-.LC1:
-    .long   1112014848
 
 #This function is called between loading the ray and firing the ray
 #It perspective projection for the camera
@@ -245,9 +241,7 @@ end1:
 
     ret
 .LC2:
-    .long 1056964608
-.LC3:
-    .long   1116471296
+    .long 1056964608 #0.5
 #This function somewhat violates the C calling conventions. It leaves the color result in xmm0-xmm2
 #Inputs: The ray start position and direction, on the stack
 #        Remaining recursion depth in r8
@@ -282,3 +276,52 @@ ray:
 
 
     ret 24 #Cleans up stack passed parameters
+
+#Finds the roots r and s of the equation ax^2 + bx + c = 0
+#Inputs: a, b, and c in xmm0, xmm1, and xmm2
+#Outputs: r and s in xmm0 and xmm1. No guaruntee to order
+#         eax of 0 if the operation was successful, -1 otherwise
+#Writes: xmm3, xmm4
+.global quadratic
+quadratic:
+    #Find b^2
+    movss xmm3, xmm1
+    mulss xmm3, xmm1
+
+    #Find 4ac
+    movss xmm4, DWORD PTR .LC5[rip]
+    mulss xmm4, xmm0
+    mulss xmm4, xmm2
+    
+    subss xmm3, xmm4 #determinant is in xmm3
+    pxor xmm4, xmm4 #load 0
+    comiss xmm3, xmm4
+    jb fail
+    #all good
+
+    sqrtss xmm3, xmm3 #xmm3 now has sqrt(b^2-4ac)
+
+    movss xmm4, xmm0
+    addss xmm4, xmm4 #xmm4 now has 2a
+
+    movss xmm2, DWORD PTR .LC6[rip] #xmm2 now has -1
+
+    movss xmm0, xmm1
+    mulss xmm0, xmm2 #xmm0 now has -b
+    addss xmm0, xmm3 #+ path
+    divss xmm0, xmm4 #xmm0 has the first root
+
+    mulss xmm1, xmm2 #xmm1 now has -b
+    subss xmm1, xmm3 #- path
+    divss xmm1, xmm4 #xmm1 has the second root
+
+    xor eax, eax #mark success
+    ret
+
+fail:
+    mov eax, -1
+    ret
+.LC5:
+    .long 1082130432 #4
+.LC6:
+    .long -2147483648 #-1
