@@ -1,18 +1,27 @@
 #include "main.h"
 
-#define WIDTH 320
-#define HEIGHT 240
+#define WIDTH 240
+#define HEIGHT 160
 #define NUM_CHANNELS 3
 #define BITS_P_PIXEL NUM_CHANNELS * 8
 #define HEADER_SIZE 14
 #define DIB_HEADER_SIZE 40 //(BITMAPINFOHEADER)
 
 int main() {
+    clock_t start, end;
+    double cpu_time_used;
+    start = clock();
     scene scene = create_test_scene();
 
     color *data = malloc(WIDTH * HEIGHT * sizeof(color));
     int temp = generate(data, WIDTH, HEIGHT, &scene);
     printf("%d\n", temp);
+
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+
+    printf("%f s\n", cpu_time_used);
+
     char *converted_array = convert_for_writing(data, WIDTH, HEIGHT, 1);
     write_file(converted_array, WIDTH, HEIGHT);
     free(converted_array);
