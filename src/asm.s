@@ -43,57 +43,57 @@ generate:
     #r10 is y-axis counter
     #edx is width
     #r9 is the x-axis counter
-loop_1:
+    loop_1:
     mov r9, rdx
-loop_2:
-    #loop body
-    
-    push r15
-    push rax
-    push rsi
-    push r10
-    push rdx
-    push r9
+    loop_2:
+        #loop body
+        
+        push r15
+        push rax
+        push rsi
+        push r10
+        push rdx
+        push r9
 
-    #load the camera position and angle
-    #r12 will contain the pointer to the camera struct
-    mov r12, [r11+40]
-    sub rsp, 24 #Pushing onto stack
-    movss xmm0, [r12+0]
-    movss xmm1, [r12+4]
-    movss xmm2, [r12+8]
+        #load the camera position and angle
+        #r12 will contain the pointer to the camera struct
+        mov r12, [r11+40]
+        sub rsp, 24 #Pushing onto stack
+        movss xmm0, [r12+0]
+        movss xmm1, [r12+4]
+        movss xmm2, [r12+8]
 
-    movss [rsp+0], xmm0
-    movss [rsp+4], xmm1
-    movss [rsp+8], xmm2
-    #Position loaded
+        movss [rsp+0], xmm0
+        movss [rsp+4], xmm1
+        movss [rsp+8], xmm2
+        #Position loaded
 
-    movss xmm0, [r12+12]
-    movss xmm1, [r12+16]
-    movss xmm2, [r12+20]
+        movss xmm0, [r12+12]
+        movss xmm1, [r12+16]
+        movss xmm2, [r12+20]
 
-    call adjust_ray_angle
+        call adjust_ray_angle
 
-    movss [rsp+12], xmm0
-    movss [rsp+16], xmm1
-    movss [rsp+20], xmm2
-    #Rotation loaded
+        movss [rsp+12], xmm0
+        movss [rsp+16], xmm1
+        movss [rsp+20], xmm2
+        #Rotation loaded
 
-    call ray
+        call ray
 
-    pop r9
-    pop rdx
-    pop r10
-    pop rsi
-    pop rax
-    pop r15
+        pop r9
+        pop rdx
+        pop r10
+        pop rsi
+        pop rax
+        pop r15
 
-    movss [r15+0], xmm0
-    movss [r15+4], xmm1
-    movss [r15+8], xmm2
-    add r15, 12
+        movss [r15+0], xmm0
+        movss [r15+4], xmm1
+        movss [r15+8], xmm2
+        add r15, 12
 
-    inc eax
+        inc eax
 
     dec r9
     jnz loop_2
@@ -223,11 +223,9 @@ adjust_ray_angle:
     movsd xmm1, xmm9
     mulsd xmm1, xmm8 #xmm1 now contains final y coordinate
 
-end2:
     cvtsd2ss xmm0, xmm0 #Convert back to float
     cvtsd2ss xmm1, xmm1 #Convert back to float
     cvtsd2ss xmm2, xmm2 #Convert back to float
-end1:
 
     movss xmm6 , [rsp+ 0]
     movss xmm7 , [rsp+ 8]
@@ -240,13 +238,13 @@ end1:
     pop r11
 
     ret
-.LC2:
+    .LC2:
     .long 1056964608 #0.5
-#This function somewhat violates the C calling conventions. It leaves the color result in xmm0-xmm2
 #Inputs: The ray start position and direction, on the stack
 #        Remaining recursion depth in r8
 #        Scene pointer in r11
 #Outputs: The r, g, and b values in xmm0, xmm1, and xmm2
+#Writes: Like everything
 ray:
     push rsp
     #Stack contains:
@@ -255,25 +253,75 @@ ray:
     # rsp + 16 -> rsp + 28: position data
     # rsp + 28 -> rsp + 40: rotation data
 
-    movss xmm0, [rsp+28] #x component of position
+    // movss xmm0, [rsp+28] #x component of position
     // movss xmm3, [rsp+16] #x component of direction
     // addss xmm0, xmm3
 
-    movss xmm1, [rsp+32] #y component of position
+    // movss xmm1, [rsp+32] #y component of position
     // movss xmm3, [rsp+20] #y component of direction
-    // addss xmm1, xmm3
 
-    movss xmm2, [rsp+36] #z component of position
+    // movss xmm2, [rsp+36] #z component of position
     // movss xmm3, [rsp+24] #z component of direction
-    // addss xmm2, xmm3
 
+    mov rbp, rsp
 
+    mov rcx, [r11+ 0]
+    mov r9, rcx
+    mov edx, [r11+32]
+    add r9, rdx
+    ray_sphere_loop:
+        #Load information for intersection call into stack
+        sub rsp, 40
+
+        #Line start pos
+        movss xmm0, [rbp+16]
+        movss [rsp+0], xmm0
+        movss xmm0, [rbp+20]
+        movss [rsp+4], xmm0
+        movss xmm0, [rbp+24]
+        movss [rsp+8], xmm0
+
+        #Line direction
+        movss xmm0, [rbp+28]
+        movss [rsp+12], xmm0
+        movss xmm0, [rbp+32]
+        movss [rsp+16], xmm0
+        movss xmm0, [rbp+36]
+        movss [rsp+20], xmm0
+
+        #Sphere pos
+        movss xmm0, [rcx+0]
+        movss [rsp+24], xmm0
+        movss xmm0, [rcx+4]
+        movss [rsp+28], xmm0
+        movss xmm0, [rcx+8]
+        movss [rsp+32], xmm0
+
+        #Sphere radius
+        movss xmm0, [rcx+12]
+        movss [rsp+36], xmm0
+
+        call line_sphere
+
+        cmp eax, 0
+        je ray_hit
+
+        add rcx, 16
+        cmp rcx, r9
+        jb ray_sphere_loop
+
+    ray_fallback:
+    #Use ambient color as a fallback
+    movss xmm0, [r11+48]
+    movss xmm1, [r11+52]
+    movss xmm2, [r11+56]
+    jmp ray_end
+    ray_hit:
+    pxor xmm0, xmm0
+    pxor xmm1, xmm1
+    pxor xmm2, xmm2
+    ray_end:
     pop rsp
-    // movss xmm0, [r11+48]
-    // movss xmm1, [r11+52]
-    // movss xmm2, [r11+56]
-
-
 
     ret 24 #Cleans up stack passed parameters
 
@@ -296,7 +344,7 @@ quadratic:
     subss xmm3, xmm4 #determinant is in xmm3
     pxor xmm4, xmm4 #load 0
     comiss xmm3, xmm4
-    jb fail
+    jb quadratic_fail
     #all good
 
     sqrtss xmm3, xmm3 #xmm3 now has sqrt(b^2-4ac)
@@ -318,10 +366,196 @@ quadratic:
     xor eax, eax #mark success
     ret
 
-fail:
+    quadratic_fail:
     mov eax, -1
     ret
-.LC5:
+    .LC5:
     .long 1082130432 #4
-.LC6:
+    .LC6:
     .long -2147483648 #-1
+
+#Finds the two intersections of a line and a sphere
+#Inputs (on stack): (x, y, z) of line start pos
+#                   (x, y, z) of line direction vector
+#                   (x, y, z) of circle center
+#                   radius of circle
+#Outputs: 0 if success, -1 if not in eax
+#         x, y, z of *closer* intersection point
+#         in xmm0, xmm1, and xmm2, if found
+#         The distance will be left in xmm3
+#Writes: xmm0 - xmm5, eax
+line_sphere:
+    push rsp
+    #Stack contains:
+    # rsp +  0 -> rsp +  8: old rsp
+    # rsp +  8 -> rsp + 16: return address
+    # rsp + 16 -> rsp + 28: line position data
+    # rsp + 28 -> rsp + 40: line direction data
+    # rsp + 40 -> rsp + 52: circle position data
+    # rsp + 52 -> rsp + 56: circle radius
+
+    #https://stackoverflow.com/questions/5883169/intersection-between-a-line-and-a-sphere
+line_sphere_modify_input:    
+    #This fomrula wants the line as two endpoints
+    #First we modify the stack values to fit this specification
+    #Calculate x1
+    movss xmm0, [rsp + 16]
+    movss xmm1, [rsp + 28]
+    addss xmm0, xmm1
+    movss [rsp + 28], xmm0
+
+    #Calculate y1
+    movss xmm0, [rsp + 20]
+    movss xmm1, [rsp + 32]
+    addss xmm0, xmm1
+    movss [rsp + 32], xmm0
+
+    #Calculate z1
+    movss xmm0, [rsp + 24]
+    movss xmm1, [rsp + 36]
+    addss xmm0, xmm1
+    movss [rsp + 36], xmm0
+
+line_sphere_contruct_quadratic:
+    #Second, we construct A, B, and C of the eventually quadratic
+    #A will be in xmm0, B in xmm1, etc. This matches the calling 
+    #convention of the quadratic finder, except the person who wrote
+    #decided C was the squared term and A was the constant term
+
+    #Begin A
+    #(x0-xc)^2
+    movss xmm3, [rsp+16]
+    movss xmm4, [rsp+40]
+    subss xmm3, xmm4
+    mulss xmm3, xmm3
+    movss xmm2, xmm3
+
+    #(y0-yc)^2
+    movss xmm3, [rsp+20]
+    movss xmm4, [rsp+44]
+    subss xmm3, xmm4
+    mulss xmm3, xmm3
+    addss xmm2, xmm3
+
+    #(z0-zc)^2
+    movss xmm3, [rsp+24]
+    movss xmm4, [rsp+48]
+    subss xmm3, xmm4
+    mulss xmm3, xmm3
+    addss xmm2, xmm3
+
+    #-R^2
+    movss xmm5, [rsp+52]
+    mulss xmm5, xmm5
+    subss xmm2, xmm5
+    #A complete
+
+    #Begin C
+    #(x0-x1)^2
+    movss xmm3, [rsp+16]
+    movss xmm4, [rsp+28]
+    subss xmm3, xmm4
+    mulss xmm3, xmm3
+    movss xmm0, xmm3
+
+    #(y0-y1)^2
+    movss xmm3, [rsp+20]
+    movss xmm4, [rsp+32]
+    subss xmm3, xmm4
+    mulss xmm3, xmm3
+    addss xmm0, xmm3
+
+    #(z0-z1)^2
+    movss xmm3, [rsp+24]
+    movss xmm4, [rsp+36]
+    subss xmm3, xmm4
+    mulss xmm3, xmm3
+    addss xmm0, xmm3
+    #C done
+
+    #Begin B
+    #(x1-xc)^2
+    movss xmm3, [rsp+28]
+    movss xmm4, [rsp+40]
+    subss xmm3, xmm4
+    mulss xmm3, xmm3
+    movss xmm1, xmm3
+
+    #(y1-yc)^2
+    movss xmm3, [rsp+32]
+    movss xmm4, [rsp+44]
+    subss xmm3, xmm4
+    mulss xmm3, xmm3
+    addss xmm1, xmm3
+
+    #(z1-yc)^2
+    movss xmm3, [rsp+32]
+    movss xmm4, [rsp+44]
+    subss xmm3, xmm4
+    mulss xmm3, xmm3
+    addss xmm1, xmm3
+    
+    #-A -C
+    subss xmm1, xmm2
+    subss xmm1, xmm0
+
+    #-R^2
+    #reuse value from previous time
+    subss xmm1, xmm5
+
+line_sphere_finish:
+
+    call quadratic
+    cmp eax, 0
+    jne line_sphere_fail #No solution
+    
+    comiss xmm0, xmm1 #Find smaller t-value. Smaller value will be closer
+    jbe line_sphere_skip
+    movss xmm0, xmm1
+    line_sphere_skip:
+
+    #If the value is behind, we can't see it
+    #This does ignore the case where the smaller value is < 0 and the larger
+    #value is > 0, but in that case we'd be inside the sphere anyway
+    pxor xmm1, xmm1
+    comiss xmm0, xmm1
+    ja line_sphere_fail
+
+    #We've detected a valid intersection
+    movss xmm3, xmm0 #Leave distance in xmm3
+
+    #Time to get the intersection point
+    #We need to recalculate the direction vector
+    #This should be improved, but it's fine for now
+
+    #Begin X
+    movss xmm5, [rsp + 16]
+    movss xmm0, [rsp + 28]
+    subss xmm4, xmm0 #xmm4 contains the x component of the normalize direction vec
+    mulss xmm4, xmm3 #xmm4 contains the x component of the offset vec
+    addss xmm0, xmm4
+    #End X
+
+    #Begin Y
+    movss xmm5, [rsp + 20]
+    movss xmm1, [rsp + 32]
+    subss xmm4, xmm1 #xmm4 contains the y component of the normalize direction vec
+    mulss xmm4, xmm3 #xmm4 contains the y component of the offset vec
+    addss xmm1, xmm4
+    #End Y
+
+    #Begin Z
+    movss xmm5, [rsp + 24]
+    movss xmm2, [rsp + 36]
+    subss xmm4, xmm2 #xmm4 contains the z component of the normalize direction vec
+    mulss xmm4, xmm3 #xmm4 contains the z component of the offset vec
+    addss xmm2, xmm4
+    #End Z
+
+    xor eax, eax
+    jmp line_sphere_return
+    line_sphere_fail:
+    mov eax, -1
+    line_sphere_return:
+    pop rsp
+    ret 40

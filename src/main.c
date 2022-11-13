@@ -33,7 +33,9 @@ scene create_test_scene() {
     scene.ambient_strength = 0.1f;
     scene.num_spheres = 1;
     scene.spheres = malloc(scene.num_spheres * sizeof(sphere));
-    scene.spheres[0] = sph(vec(5, 0, 0), 2);
+    // scene.spheres[1] = sph(vec(2, -1, 0), 0.1);
+    scene.spheres[0] = sph(vec(4, 0, 0), 2);
+
     
     return scene;
 }
