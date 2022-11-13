@@ -1,7 +1,7 @@
 #include "main.h"
 
-#define WIDTH 960
-#define HEIGHT 640
+#define WIDTH 1920
+#define HEIGHT 1080
 #define NUM_CHANNELS 3
 #define BITS_P_PIXEL NUM_CHANNELS * 8
 #define HEADER_SIZE 14
@@ -42,17 +42,17 @@ scene create_test_scene() {
     scene.camera = camera;
     scene.ambient = col(0.7f, 0.9f, 1.0f);
     scene.ambient_strength = 0.1f;
-    scene.num_spheres = 4;
+    scene.num_spheres = 1;
     scene.spheres = malloc(scene.num_spheres * sizeof(sphere));
-    scene.spheres[0] = sph(vec(5, 0, 0.5), 0.5, 0);
-    scene.spheres[1] = sph(vec(2, -1, 0), 0.1, 1);
-    scene.spheres[2] = sph(vec(6, 0, 0), 0.1, 1);
-    scene.spheres[3] = sph(vec(3, 0.25, 0.25), 0.1, 1);
+    scene.spheres[0] = sph(vec(5, 0, 0.5), 1, 0);
+    // scene.spheres[1] = sph(vec(2, -1, 0), 0.1, 1);
+    // scene.spheres[2] = sph(vec(6, 0, 0), 0.1, 1);
+    // scene.spheres[3] = sph(vec(3, 0.25, 0.25), 0.1, 1);
 
     scene.num_materials = 2;
     scene.materials = malloc(scene.num_materials * sizeof(material));
     scene.materials[0] = mat(col(1, 0.5, 0.5));
-    scene.materials[1] = mat(col(1, 1, 1));
+    scene.materials[1] = mat(col(0.8, 0.8, 0.8));
 
     return scene;
 }

@@ -89,6 +89,8 @@ generate:
         movss [rsp+20], xmm2
         #Rotation loaded
 
+        mov r8, 8 #Max of 8 bounces
+
         call ray
 
         pop r9
@@ -360,27 +362,81 @@ ray:
     jmp ray_end
 
     ray_hit:
-    mov rcx, [r11+16] #Contains base of materials array
-    imul edx, 12 #Contains material offset
-    add rcx, rdx #Contains the material
+        mov rcx, [r11+16] #Contains base of materials array
+        imul edx, 12 #Contains material offset
+        add rcx, rdx #Contains the material
 
-    movss xmm0, [rcx+0] #Copy material color
-    movss xmm1, [rcx+4]
-    movss xmm2, [rcx+8]
+        cmp r8, 0
+        je ray_recursion_end #Reach recursion depth; stop and return
 
-    // #Normals test
-    // movss xmm0, [rsp+12]
-    // movss xmm1, [rsp+16]
-    // movss xmm2, [rsp+20]
-    // movss xmm3, DWORD PTR .LC1[rip]
-    // addss xmm0, xmm3
-    // addss xmm1, xmm3
-    // addss xmm2, xmm3
-    // movss xmm3, DWORD PTR .LC2[rip]
-    // mulss xmm0, xmm3
-    // mulss xmm1, xmm3
-    // mulss xmm2, xmm3
+        movss xmm0, [rsp+0] #Ray hit pos x
+        movss xmm1, [rsp+4] #Ray hit pos y
+        movss xmm2, [rsp+8] #Ray hit pos z
 
+        movss xmm3, [rbp+16] #Ray start pos x
+        movss xmm4, [rbp+20] #Ray start pos y
+        movss xmm5, [rbp+24] #Ray start pos z
+
+        subss xmm0, xmm3 #Unnormalized ray direction x
+        subss xmm1, xmm4 #Unnormalized ray direction y
+        subss xmm2, xmm5 #Unnormalized ray direction z
+
+        call normalize
+
+        movss xmm3, [rsp+12] #Hit normal x
+        movss xmm4, [rsp+16] #Hit normal y
+        movss xmm5, [rsp+20] #Hit normal z
+
+        call reflect #Next ray direction
+
+        movss xmm3, [rsp+0] #Next ray start pos x
+        movss xmm4, [rsp+4] #Next ray start pos y
+        movss xmm5, [rsp+8] #Next ray start pos z
+
+        push r8
+        push rcx
+        dec r8
+
+        sub rsp, 24 #Pushing onto stack
+        movss [rsp+ 0], xmm0
+        movss [rsp+ 4], xmm1
+        movss [rsp+ 8], xmm2
+
+        movss [rsp+12], xmm3
+        movss [rsp+16], xmm4
+        movss [rsp+20], xmm5
+
+        call ray
+
+        pop rcx
+        pop r8
+
+        movss xmm3, [rcx+0] #Copy material color
+        movss xmm4, [rcx+4]
+        movss xmm5, [rcx+8]
+
+        mulss xmm0, xmm3 #Multiply colors
+        mulss xmm1, xmm4 #Multiply colors
+        mulss xmm2, xmm5 #Multiply colors
+
+        // #Normals test
+        // movss xmm0, [rsp+12]
+        // movss xmm1, [rsp+16]
+        // movss xmm2, [rsp+20]
+        // movss xmm3, DWORD PTR .LC1[rip]
+        // addss xmm0, xmm3
+        // addss xmm1, xmm3
+        // addss xmm2, xmm3
+        // movss xmm3, DWORD PTR .LC2[rip]
+        // mulss xmm0, xmm3
+        // mulss xmm1, xmm3
+        // mulss xmm2, xmm3
+
+        jmp ray_end
+    ray_recursion_end:
+    pxor xmm0, xmm0
+    pxor xmm1, xmm1
+    pxor xmm2, xmm2
     ray_end:
     add rsp, 24
     pop rsp
@@ -584,7 +640,7 @@ line_sphere_finish:
     #value is > 0, but in that case we'd be inside the sphere anyway
     pxor xmm1, xmm1
     comiss xmm0, xmm1
-    jb line_sphere_fail
+    jbe line_sphere_fail
 
     #We've detected a valid intersection
     movss xmm3, xmm0 #Leave distance in xmm3
@@ -652,4 +708,57 @@ normalize:
     movss xmm3, [rsp+0]
     movss xmm4, [rsp+4]
     add rsp, 8
+    ret
+#Calculates the dot product between two vectors
+#Inputs: The vectors in xmm0 - xmm2 and xmm3 - xmm5
+#Outputs: The dot product in xmm0
+#Writes: xmm0 - xmm2
+dot:
+    mulss xmm0, xmm3 #Component wise
+    mulss xmm1, xmm4
+    mulss xmm2, xmm5
+
+    addss xmm0, xmm1 #Add components
+    addss xmm0, xmm2 #Add components
+
+    ret
+
+#Multiples the components of a vector with a scalar
+#Inputs: The vector in xmm0 - xmm2 and the scalar in xmm3
+#Outputs: The vector in xmm0 - xmm2
+#Writes: xmm0 - xmm2
+scalar_mul:
+    mulss xmm0, xmm3
+    mulss xmm1, xmm3
+    mulss xmm2, xmm3
+    ret
+
+#This calculates the reflection vector across a surface
+#Inputs: The input direction vector in xmm0 - xmm2
+#        The normal vector of the surface in xmm3 - xmm5
+#Outputs: The reflected vector in xmm0 - xmm2
+#Writes: xmm0 - xmm5
+reflect:
+    #https://math.stackexchange.com/questions/13261/how-to-get-a-reflection-vector
+    sub rsp, 12
+    movss [rsp+0], xmm0
+    movss [rsp+4], xmm1
+    movss [rsp+8], xmm2
+
+    call dot #Dot product of d and n is in xmm0
+    addss xmm0, xmm0 #Multiply by two
+
+    mulss xmm3, xmm0
+    mulss xmm4, xmm0
+    mulss xmm5, xmm0 #Calculate 2(d*n)n
+
+    movss xmm0, [rsp+0]
+    movss xmm1, [rsp+4]
+    movss xmm2, [rsp+8] #Get d back
+    add rsp, 12
+
+    subss xmm0, xmm3
+    subss xmm1, xmm4
+    subss xmm2, xmm5 #Component-wise subtract
+
     ret
