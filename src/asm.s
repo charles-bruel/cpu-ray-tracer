@@ -1,5 +1,10 @@
 .intel_syntax noprefix
 
+.LC9: #Main variables
+    .long 2 #Number of rays
+.LC10:
+    .long 3 #Recursion depth
+
 .global test_quad
 test_quad:
     movss xmm0, [rcx]
@@ -112,7 +117,10 @@ generate:
         movss [rsp+20], xmm2
         #Rotation loaded
 
-        mov r8, 8 #Max of 8 bounces
+        push rdx
+        mov edx, .LC10 [rip] #Max bounces
+        mov r8, rdx
+        pop rdx
 
         call ray
 
@@ -382,6 +390,7 @@ ray:
     movss xmm0, [r11+48]
     movss xmm1, [r11+52]
     movss xmm2, [r11+56]
+
     jmp ray_end
 
     ray_hit:
@@ -392,6 +401,13 @@ ray:
         cmp r8, 0
         je ray_recursion_end #Reach recursion depth; stop and return
 
+        pxor xmm13, xmm13 #R accumulator
+        pxor xmm14, xmm14 #G accumulator
+        pxor xmm15, xmm15 #B accumulator
+
+        mov edx, .LC9 [rip] #Iterations left
+        mov r12, rdx
+        ray_hit_scatter_loop:
         movss xmm0, [rsp+0] #Ray hit pos x
         movss xmm1, [rsp+4] #Ray hit pos y
         movss xmm2, [rsp+8] #Ray hit pos z
@@ -440,44 +456,65 @@ ray:
 
         call ray
 
+        addss xmm13, xmm0
+        addss xmm14, xmm1
+        addss xmm15, xmm2 #Store for running average
+a:
         pop rcx
         pop r8
+
+        dec r12
+        cmp r12, 0
+        jg ray_hit_scatter_loop
+
+        #END LOOP
+
+        mov edx, .LC9 [rip]
+        cvtsi2ss xmm12, edx #Division part of average
+        divss xmm13, xmm12 #Final from all ray R
+        divss xmm14, xmm12 #Final from all ray G
+        divss xmm15, xmm12 #Final from all ray B
+
+        movss xmm0, xmm13
+        movss xmm1, xmm14
+        movss xmm2, xmm15
+
+        // jmp ray_end
 
         movss xmm3, [rcx+0] #Copy material color
         movss xmm4, [rcx+4]
         movss xmm5, [rcx+8]
         movss xmm6, [rcx+12] #Emission
 
-        mulss xmm0, xmm3 #Multiply colors
-        mulss xmm1, xmm4 #Multiply colors
+        mulss xmm0, xmm3
+        mulss xmm1, xmm4
         mulss xmm2, xmm5 #Multiply colors
 
         mulss xmm3, xmm6
         mulss xmm4, xmm6
-        mulss xmm5, xmm6
+        mulss xmm5, xmm6 #Calculate emission strength
         
         addss xmm0, xmm3 #Add emmision
         addss xmm1, xmm4 #Add emmision
         addss xmm2, xmm5 #Add emmision
 
-        // #Normals test
-        // movss xmm0, [rsp+12]
-        // movss xmm1, [rsp+16]
-        // movss xmm2, [rsp+20]
-        // movss xmm3, DWORD PTR .LC1[rip]
-        // addss xmm0, xmm3
-        // addss xmm1, xmm3
-        // addss xmm2, xmm3
-        // movss xmm3, DWORD PTR .LC2[rip]
-        // mulss xmm0, xmm3
-        // mulss xmm1, xmm3
-        // mulss xmm2, xmm3
-
         jmp ray_end
     ray_recursion_end:
-    pxor xmm0, xmm0
-    pxor xmm1, xmm1
-    pxor xmm2, xmm2
+        movss xmm0, [r11+48]
+        movss xmm1, [r11+52]
+        movss xmm2, [r11+56]
+
+        movss xmm3, [rcx+0] #Copy material color
+        movss xmm4, [rcx+4]
+        movss xmm5, [rcx+8]
+        movss xmm6, [rcx+12] #Emission
+        mulss xmm3, xmm6
+        mulss xmm4, xmm6
+        mulss xmm5, xmm6 #Calculate emission strength
+        
+        addss xmm0, xmm3 #Add emmision
+        addss xmm1, xmm4 #Add emmision
+        addss xmm2, xmm5 #Add emmision
     ray_end:
     add rsp, 24
     pop rsp
@@ -485,7 +522,8 @@ ray:
 .LC0:
     .long 1148846080 #1000
 .LC1:
-    .long 1065353216
+    .long 1065353216 #1
+
 #Finds the roots r and s of the equation ax^2 + bx + c = 0
 #Inputs: a, b, and c in xmm0, xmm1, and xmm2
 #Outputs: r and s in xmm0 and xmm1. No guaruntee to order
