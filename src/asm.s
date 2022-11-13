@@ -386,7 +386,7 @@ ray:
 
     ray_hit:
         mov rcx, [r11+16] #Contains base of materials array
-        imul edx, 16 #Contains material offset
+        imul edx, 20 #Contains material offset
         add rcx, rdx #Contains the material
 
         cmp r8, 0
@@ -418,7 +418,8 @@ ray:
 
         call random_ray #Next ray direction for purely diffuse in xmm3 - xmm5
 
-        #TODO merge
+        movss xmm6, [rcx+16] #Roughness
+        call slerp #Places final ray in xmm0 - xmm2
 
         movss xmm3, [rsp+0] #Next ray start pos x
         movss xmm4, [rsp+4] #Next ray start pos y
@@ -431,11 +432,11 @@ ray:
         sub rsp, 24 #Pushing onto stack
         movss [rsp+12], xmm0
         movss [rsp+16], xmm1
-        movss [rsp+20], xmm2
+        movss [rsp+20], xmm2 #Ray direction
 
         movss [rsp+ 0], xmm3
         movss [rsp+ 4], xmm4
-        movss [rsp+ 8], xmm5
+        movss [rsp+ 8], xmm5 #Start position
 
         call ray
 
@@ -839,9 +840,6 @@ random_ray:
     movss [rsp+12], xmm6
     movss [rsp+16], xmm7
     movss [rsp+20], xmm8
-    movss [rsp+24], xmm3
-    movss [rsp+28], xmm4
-    movss [rsp+32], xmm5
     push rcx
     push rdx
     push r8
@@ -919,9 +917,6 @@ random_ray:
     movss xmm6, [rsp+12]
     movss xmm7, [rsp+16]
     movss xmm8, [rsp+20]
-    movss xmm3, [rsp+24]
-    movss xmm4, [rsp+28]
-    movss xmm5, [rsp+32]
     add rsp, 36
     ret
 .LC7:
@@ -937,7 +932,7 @@ random_ray:
 #        The second vector in xmm3 - xmm5
 #        The t value in xmm6
 #Outputs: The slerped vector in xmm0 - xmm2
-#Writes: 
+#Writes: xmm0 - xmm5
 slerp:
     call lerp
     call normalize
