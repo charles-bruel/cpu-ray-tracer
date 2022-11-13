@@ -1,5 +1,15 @@
 .intel_syntax noprefix
 
+.global test_quad
+test_quad:
+    movss xmm0, [rcx]
+    movss xmm1, [rdx]
+    movss xmm2, [r8]
+    call quadratic
+    movss [rcx], xmm0
+    movss [rdx], xmm1
+    ret
+
 .global generate
 #void generate(color *array, unsigned int width, unsigned int height);
 #*array is in rcx, width is in edx, height is in r8, and scene is in r9
@@ -238,7 +248,7 @@ adjust_ray_angle:
     pop r11
 
     ret
-    .LC2:
+.LC2:
     .long 1056964608 #0.5
 #Inputs: The ray start position and direction, on the stack
 #        Remaining recursion depth in r8
@@ -253,6 +263,8 @@ ray:
     # rsp + 16 -> rsp + 28: position data
     # rsp + 28 -> rsp + 40: rotation data
 
+    movss xmm6, DWORD PTR .LC0[rip] #Will contain the closest object
+
     mov rbp, rsp
     
     mov rcx, [r11+ 0]
@@ -260,6 +272,7 @@ ray:
     mov edx, [r11+32]
     imul edx, 20
     add r9, rdx
+    mov edx, -1 #Contains material hit ID
     ray_sphere_loop:
         #Load information for intersection call into stack
         sub rsp, 40
@@ -295,11 +308,16 @@ ray:
         call line_sphere
 
         cmp eax, 0
-        je ray_hit
+        je ray_hit_sphere
+        ray_hit_sphere_return:
 
         add rcx, 20
         cmp rcx, r9
         jb ray_sphere_loop
+
+    #Check if we hit a ray
+    cmp edx, -1
+    jne ray_hit
 
     ray_fallback:
     #Use ambient color as a fallback
@@ -307,15 +325,30 @@ ray:
     movss xmm1, [r11+52]
     movss xmm2, [r11+56]
     jmp ray_end
+
+    ray_hit_sphere:
+    #Hit a sphere; if closer save the distance and material
+    comiss xmm3, xmm6
+    ja ray_hit_sphere_return #Not closer, ignore
+
+    movss xmm6, xmm3
+    mov edx, [rcx+16]
+
+    jmp ray_hit_sphere_return
     ray_hit:
-    pxor xmm0, xmm0
-    pxor xmm1, xmm1
-    pxor xmm2, xmm2
+    mov rcx, [r11+16] #Contains base of materials array
+    imul edx, 12 #Contains material offset
+    add rcx, rdx #Contains the material
+
+    movss xmm0, [rcx+0]
+    movss xmm1, [rcx+4]
+    movss xmm2, [rcx+8]
     ray_end:
     pop rsp
 
     ret 24 #Cleans up stack passed parameters
-
+.LC0:
+    .long   1148846080 #1000
 #Finds the roots r and s of the equation ax^2 + bx + c = 0
 #Inputs: a, b, and c in xmm0, xmm1, and xmm2
 #Outputs: r and s in xmm0 and xmm1. No guaruntee to order
@@ -328,7 +361,7 @@ quadratic:
     mulss xmm3, xmm3 #xmm3 now contains b^2
 
     #Find 4ac
-    movss xmm4, DWORD PTR .LC5[rip]
+    movss xmm4, DWORD PTR .LC5[rip] #xmm4 now contains 4
     mulss xmm4, xmm0
     mulss xmm4, xmm2 #xmm4 now contains 4ac
     
@@ -354,16 +387,17 @@ quadratic:
     subss xmm1, xmm3 #- path
     divss xmm1, xmm4 #xmm1 has the second root
 
+    quadratic_success:
     xor eax, eax #mark success
     ret
 
     quadratic_fail:
     mov eax, -1
     ret
-    .LC5:
+.LC5:
     .long 1082130432 #4
-    .LC6:
-    .long -2147483648 #-1
+.LC6:
+    .long -1082130432 #-1
 
 #Finds the two intersections of a line and a sphere
 #Inputs (on stack): (x, y, z) of line start pos
@@ -510,7 +544,7 @@ line_sphere_finish:
     #value is > 0, but in that case we'd be inside the sphere anyway
     pxor xmm1, xmm1
     comiss xmm0, xmm1
-    ja line_sphere_fail
+    jb line_sphere_fail
 
     #We've detected a valid intersection
     movss xmm3, xmm0 #Leave distance in xmm3
