@@ -1,7 +1,7 @@
 #include "main.h"
 
-#define WIDTH 160
-#define HEIGHT 120
+#define WIDTH 320
+#define HEIGHT 240
 #define NUM_CHANNELS 3
 #define BITS_P_PIXEL NUM_CHANNELS * 8
 #define HEADER_SIZE 14
@@ -34,7 +34,7 @@ scene create_test_scene() {
     scene.num_spheres = 1;
     scene.spheres = malloc(scene.num_spheres * sizeof(sphere));
     // scene.spheres[1] = sph(vec(2, -1, 0), 0.1);
-    scene.spheres[0] = sph(vec(4, 0, 0), 2);
+    scene.spheres[0] = sph(vec(5, 0, 1), 1);
 
     
     return scene;

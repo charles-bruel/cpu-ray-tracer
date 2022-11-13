@@ -162,8 +162,8 @@ adjust_ray_angle:
     subss xmm3, DWORD PTR .LC2[rip] #xmm3 contains [-0.5, 0.5] x coordinate
     subss xmm4, DWORD PTR .LC2[rip] #xmm4 contains [-0.5, 0.5] y coordinate
 
-    divss xmm6, xmm5 #xmm5 now contains 1/aspect ratio
-    mulss xmm4, xmm6 #xmm4 now contains y coordinate adjusted for aspect ratio
+    divss xmm5, xmm6 #xmm5 now contains 1/aspect ratio
+    mulss xmm4, xmm5 #xmm4 now contains y coordinate adjusted for aspect ratio
     
     mov rbx, [r11+40] #rbx now contains pointer to camera struct
     movss xmm5, [rbx+24] #xmm5 now contains camera FOV
@@ -253,16 +253,6 @@ ray:
     # rsp + 16 -> rsp + 28: position data
     # rsp + 28 -> rsp + 40: rotation data
 
-    // movss xmm0, [rsp+28] #x component of position
-    // movss xmm3, [rsp+16] #x component of direction
-    // addss xmm0, xmm3
-
-    // movss xmm1, [rsp+32] #y component of position
-    // movss xmm3, [rsp+20] #y component of direction
-
-    // movss xmm2, [rsp+36] #z component of position
-    // movss xmm3, [rsp+24] #z component of direction
-
     mov rbp, rsp
 
     mov rcx, [r11+ 0]
@@ -334,12 +324,12 @@ ray:
 quadratic:
     #Find b^2
     movss xmm3, xmm1
-    mulss xmm3, xmm1
+    mulss xmm3, xmm3 #xmm3 now contains b^2
 
     #Find 4ac
     movss xmm4, DWORD PTR .LC5[rip]
     mulss xmm4, xmm0
-    mulss xmm4, xmm2
+    mulss xmm4, xmm2 #xmm4 now contains 4ac
     
     subss xmm3, xmm4 #determinant is in xmm3
     pxor xmm4, xmm4 #load 0
@@ -489,12 +479,12 @@ line_sphere_contruct_quadratic:
     addss xmm1, xmm3
 
     #(z1-yc)^2
-    movss xmm3, [rsp+32]
-    movss xmm4, [rsp+44]
+    movss xmm3, [rsp+36]
+    movss xmm4, [rsp+48]
     subss xmm3, xmm4
     mulss xmm3, xmm3
     addss xmm1, xmm3
-    
+
     #-A -C
     subss xmm1, xmm2
     subss xmm1, xmm0
