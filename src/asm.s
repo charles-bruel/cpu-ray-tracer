@@ -258,7 +258,7 @@ ray:
     mov rcx, [r11+ 0]
     mov r9, rcx
     mov edx, [r11+32]
-    imul edx, 16
+    imul edx, 20
     add r9, rdx
     ray_sphere_loop:
         #Load information for intersection call into stack
@@ -297,7 +297,7 @@ ray:
         cmp eax, 0
         je ray_hit
 
-        add rcx, 16
+        add rcx, 20
         cmp rcx, r9
         jb ray_sphere_loop
 

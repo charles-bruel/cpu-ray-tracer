@@ -18,8 +18,9 @@ typedef struct {
 } vec3;
 
 typedef struct {
-    vec3 pos;
-    float r;
+    vec3 pos;//0-12
+    float r;//12-16
+    unsigned int material_id;//16-20
 } sphere;
 
 typedef struct {
@@ -41,13 +42,13 @@ typedef struct {
 typedef struct {
     sphere *spheres;//0-8
     triangle *tris;//8-16
-    material **sphere_materials;//16-24
-    material **triangle_materials;//24-32
+    material *materials;//16-24
+    unsigned int num_materials;//24-28
+    float ambient_strength;//28-32
     unsigned int num_spheres;//32-36
     unsigned int num_tris;//36-40
     camera *camera;//40-48
     color ambient;//48-60
-    float ambient_strength;//60-64
 } scene;
 
 scene create_test_scene();
@@ -57,5 +58,6 @@ extern int generate(color *array, unsigned int width, unsigned int height, scene
 vec3 vec(float x, float y, float z);
 color col(float r, float g, float b);
 triangle tri(vec3 pos1, vec3 pos2, vec3 pos3);
-sphere sph(vec3 pos, float r);
+sphere sph(vec3 pos, float r, unsigned int material_id);
+material mat(color color);
 // void generate(color *array, unsigned int width, unsigned int height);

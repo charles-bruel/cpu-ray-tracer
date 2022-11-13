@@ -42,10 +42,14 @@ scene create_test_scene() {
     scene.ambient_strength = 0.1f;
     scene.num_spheres = 2;
     scene.spheres = malloc(scene.num_spheres * sizeof(sphere));
-    scene.spheres[0] = sph(vec(5, 0, 1), 1);
-    scene.spheres[1] = sph(vec(2, -1, 0), 0.1);
+    scene.spheres[0] = sph(vec(5, 0, 1), 1, 0);
+    scene.spheres[1] = sph(vec(2, -1, 0), 0.1, 1);
 
-    
+    scene.num_materials = 2;
+    scene.materials = malloc(scene.num_materials * sizeof(material));
+    scene.materials[0] = mat(col(1, 0,5, 0.5));
+    scene.materials[1] = mat(col(1, 1, 1));
+
     return scene;
 }
 
@@ -143,10 +147,17 @@ color col(float r, float g, float b) {
     return to_return;
 }
 
-sphere sph(vec3 pos, float r) {
+sphere sph(vec3 pos, float r, unsigned int material_id) {
     sphere to_return;
     to_return.pos = pos;
     to_return.r = r;
+    to_return.material_id = material_id;
+    return to_return;
+}
+
+material mat(color color) {
+    material to_return;
+    to_return.color = color;
     return to_return;
 }
 
