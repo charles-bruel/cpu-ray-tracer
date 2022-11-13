@@ -254,10 +254,11 @@ ray:
     # rsp + 28 -> rsp + 40: rotation data
 
     mov rbp, rsp
-
+    
     mov rcx, [r11+ 0]
     mov r9, rcx
     mov edx, [r11+32]
+    imul edx, 16
     add r9, rdx
     ray_sphere_loop:
         #Load information for intersection call into stack
