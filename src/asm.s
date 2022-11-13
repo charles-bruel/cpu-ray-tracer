@@ -10,6 +10,29 @@ test_quad:
     movss [rdx], xmm1
     ret
 
+.global asm_rand
+asm_rand:
+    sub rsp, 24
+    movss [rsp+ 0], xmm0
+    movss [rsp+ 4], xmm1
+    movss [rsp+ 8], xmm2
+    movss [rsp+12], xmm3
+    movss [rsp+16], xmm4
+    movss [rsp+20], xmm5
+
+    sub rsp, 8
+    call rand
+    add rsp, 8
+    
+    movss [rsp+ 0], xmm0
+    movss [rsp+ 4], xmm1
+    movss [rsp+ 8], xmm2
+    movss [rsp+12], xmm3
+    movss [rsp+16], xmm4
+    movss [rsp+20], xmm5
+    add rsp, 24
+    ret
+
 .global generate
 #void generate(color *array, unsigned int width, unsigned int height);
 #*array is in rcx, width is in edx, height is in r8, and scene is in r9
@@ -363,7 +386,7 @@ ray:
 
     ray_hit:
         mov rcx, [r11+16] #Contains base of materials array
-        imul edx, 12 #Contains material offset
+        imul edx, 16 #Contains material offset
         add rcx, rdx #Contains the material
 
         cmp r8, 0
@@ -387,7 +410,15 @@ ray:
         movss xmm4, [rsp+16] #Hit normal y
         movss xmm5, [rsp+20] #Hit normal z
 
-        call reflect #Next ray direction
+        call reflect #Next ray direction for purely specular in xmm0 - xmm2
+
+        movss xmm3, [rsp+12] #Hit normal x
+        movss xmm4, [rsp+16] #Hit normal y
+        movss xmm5, [rsp+20] #Hit normal z
+
+        call random_ray #Next ray direction for purely diffuse in xmm3 - xmm5
+
+        #TODO merge
 
         movss xmm3, [rsp+0] #Next ray start pos x
         movss xmm4, [rsp+4] #Next ray start pos y
@@ -398,13 +429,13 @@ ray:
         dec r8
 
         sub rsp, 24 #Pushing onto stack
-        movss [rsp+ 0], xmm0
-        movss [rsp+ 4], xmm1
-        movss [rsp+ 8], xmm2
+        movss [rsp+12], xmm0
+        movss [rsp+16], xmm1
+        movss [rsp+20], xmm2
 
-        movss [rsp+12], xmm3
-        movss [rsp+16], xmm4
-        movss [rsp+20], xmm5
+        movss [rsp+ 0], xmm3
+        movss [rsp+ 4], xmm4
+        movss [rsp+ 8], xmm5
 
         call ray
 
@@ -414,10 +445,19 @@ ray:
         movss xmm3, [rcx+0] #Copy material color
         movss xmm4, [rcx+4]
         movss xmm5, [rcx+8]
+        movss xmm6, [rcx+12] #Emission
 
         mulss xmm0, xmm3 #Multiply colors
         mulss xmm1, xmm4 #Multiply colors
         mulss xmm2, xmm5 #Multiply colors
+
+        mulss xmm3, xmm6
+        mulss xmm4, xmm6
+        mulss xmm5, xmm6
+        
+        addss xmm0, xmm3 #Add emmision
+        addss xmm1, xmm4 #Add emmision
+        addss xmm2, xmm5 #Add emmision
 
         // #Normals test
         // movss xmm0, [rsp+12]
@@ -760,5 +800,176 @@ reflect:
     subss xmm0, xmm3
     subss xmm1, xmm4
     subss xmm2, xmm5 #Component-wise subtract
+
+    ret
+#Generates a random float [-1, 1]
+#Outputs: The random float in xmm0
+#Writes: xmm0
+rand_float:
+    push rcx
+    push rax
+    sub rsp, 4
+    movss [rsp], xmm1
+
+    call asm_rand #Random int now in eax
+    mov rcx, 511
+    and rax, rcx #rax now has a number from [0, 511]
+    cvtsi2ss xmm0, rax #xmm0 now has a number from [0, 511]
+    movss xmm1, DWORD PTR .LC3[rip] #xmm1 has 255.5
+    divss xmm0, xmm1 #xmm0 now has a number from [0, 2]
+    movss xmm1, DWORD PTR .LC6[rip] #xmm1 has -1
+    subss xmm0, xmm1 #xmm0 now has a number from [-1, 1]
+
+    movss xmm1, [rsp]
+    add rsp, 4
+    pop rax
+    pop rcx
+    ret
+.LC3:
+    .long 1132429312 #255.5
+#Creates a random ray from a surface normal
+#Inputs: The surface normal in xmm3 - xmm5
+#Outputs: The random ray in xmm3 - xmm5
+#Writes: xmm3 - xmm5
+random_ray:
+    sub rsp, 36
+    movss [rsp+ 0], xmm0
+    movss [rsp+ 4], xmm1
+    movss [rsp+ 8], xmm2
+    movss [rsp+12], xmm6
+    movss [rsp+16], xmm7
+    movss [rsp+20], xmm8
+    movss [rsp+24], xmm3
+    movss [rsp+28], xmm4
+    movss [rsp+32], xmm5
+    push rcx
+    push rdx
+    push r8
+    push r9
+    push r10
+    push r11
+
+    #We will generate a random point on a sphere
+    #Then we will use the dot product to see if it is in the hemisphere around the normal
+    #If not, we will invert it
+
+    #https://math.stackexchange.com/questions/1585975/how-to-generate-random-points-on-a-sphere
+    call rand_float
+    movss xmm6, xmm0 #xmm6 has future z value
+
+    call rand_float
+    movss xmm1, DWORD PTR .LC7[rip]
+    mulss xmm0, xmm1 #xmm0 now contains the theta value
+    cvtss2sd xmm0, xmm0
+    movsd xmm7, xmm0 #xmm7 now contains the theta value
+
+    sub rsp, 20
+
+    call sin #xmm0 now contains sin theta
+    movsd xmm8, xmm0 #xmm8 now contains sin theta as a double
+    movsd xmm0, xmm7
+    call cos #xmm0 now contains cos theta as a double
+
+    add rsp, 20
+
+    cvtsd2ss xmm8, xmm8 #xmm8 now contains sin theta
+    cvtsd2ss xmm0, xmm0 #xmm0 now contains cos theta
+    movss xmm1, xmm8
+    movss xmm2, xmm7
+
+    call normalize #normalize direction vector
+
+    movss xmm3, xmm0 #move the normalized direction vector
+    movss xmm4, xmm1
+    movss xmm5, xmm2
+
+    movss xmm0, [rsp+24]
+    movss xmm1, [rsp+28]
+    movss xmm2, [rsp+32] #load the saved normal vector
+
+    call dot #dot product in xmm0, normalized direction vector remains in xmm3 - xmm5
+
+    movss xmm1, DWORD PTR .LC8[rip] #load 1
+    movss xmm2, DWORD PTR .LC6[rip] #load -1
+    pxor xmm6, xmm6 #load 0
+
+    comiss xmm0, xmm6
+    // fcmovb xmm1, xmm2 #move if less than 0
+    // #A condition move is used because by definition this should be 50-50 random, so a branch
+    // #would be slow
+    // Error: operand size mismatch for `fcmovb'
+    // TODO: FIXME - i think CMOV would have a decent speed advantage
+    ja random_ray_cond
+    movss xmm1, xmm2
+    random_ray_cond:
+
+    mulss xmm3, xmm1
+    mulss xmm4, xmm1
+    mulss xmm5, xmm1
+
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+    pop rdx
+    pop rcx
+    movss xmm0, [rsp+ 0]
+    movss xmm1, [rsp+ 4]
+    movss xmm2, [rsp+ 8]
+    movss xmm6, [rsp+12]
+    movss xmm7, [rsp+16]
+    movss xmm8, [rsp+20]
+    movss xmm3, [rsp+24]
+    movss xmm4, [rsp+28]
+    movss xmm5, [rsp+32]
+    add rsp, 36
+    ret
+.LC7:
+    .long 1078530011 #pi
+.LC8:
+    .long 1065353216 #1
+
+#Spherically lerps between two values
+#Assumes the inputs are normalized vectors
+#This uses a naive approach that I believe is still accurate for normalized vectors
+#It takes a lerp of the two vectors, then normalizes the result
+#Inputs: The first vector in xmm0 - xmm2
+#        The second vector in xmm3 - xmm5
+#        The t value in xmm6
+#Outputs: The slerped vector in xmm0 - xmm2
+#Writes: 
+slerp:
+    call lerp
+    call normalize
+    ret
+
+#Linearly lerps between two values
+#Inputs: The first vector in xmm0 - xmm2
+#        The second vector in xmm3 - xmm5
+#        The t value in xmm6
+#Outputs: The lerped vector in xmm0 - xmm2
+#Writes: xmm0 - xmm5
+lerp:
+    sub rsp, 4
+    movss [rsp], xmm7
+
+    mulss xmm3, xmm6
+    mulss xmm4, xmm6
+    mulss xmm5, xmm6 #Multiply by t
+
+    #Get 1-xmm6 into xmm7
+    movss xmm7, DWORD PTR .LC8[rip]
+    subss xmm7, xmm6
+
+    mulss xmm0, xmm7
+    mulss xmm1, xmm7
+    mulss xmm2, xmm7 #Multiply by 1-t
+
+    addss xmm0, xmm3
+    addss xmm1, xmm4
+    addss xmm2, xmm5 #Add two components together
+
+    movss xmm7, [rsp]
+    add rsp, 4
 
     ret

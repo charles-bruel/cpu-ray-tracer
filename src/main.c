@@ -8,8 +8,11 @@
 #define DIB_HEADER_SIZE 40 //(BITMAPINFOHEADER)
 
 extern void test_quad(float *a, float *b, float *c);
+extern int asm_rand();
 
 int main() {
+    srand(time(NULL));
+
     clock_t start, end;
     double cpu_time_used;
     start = clock();
@@ -35,24 +38,26 @@ int main() {
 scene create_test_scene() {
     unsigned int size = sizeof(camera);
     camera *camera = malloc(size);
-    (*camera).pos = vec(0, 0, 0);
+    (*camera).pos = vec(1, 0, 0);
     (*camera).view_dir = vec(1, 0, 0);
     (*camera).fov = 70.0f * 0.0174533f;
     scene scene;
     scene.camera = camera;
     scene.ambient = col(0.7f, 0.9f, 1.0f);
     scene.ambient_strength = 0.1f;
-    scene.num_spheres = 1;
+    scene.num_spheres = 5;
     scene.spheres = malloc(scene.num_spheres * sizeof(sphere));
-    scene.spheres[0] = sph(vec(5, 0, 0.5), 1, 0);
-    // scene.spheres[1] = sph(vec(2, -1, 0), 0.1, 1);
-    // scene.spheres[2] = sph(vec(6, 0, 0), 0.1, 1);
-    // scene.spheres[3] = sph(vec(3, 0.25, 0.25), 0.1, 1);
+    scene.spheres[0] = sph(vec(5, 0, 0.5), 0.5, 0);
+    scene.spheres[1] = sph(vec(2, -0.5, 0), 0.1, 1);
+    scene.spheres[2] = sph(vec(6, 0, 0), 0.1, 1);
+    scene.spheres[3] = sph(vec(3, 0.25, 0.25), 0.1, 1);
+    scene.spheres[4] = sph(vec(2, 0.5, 0), 0.05, 2);
 
-    scene.num_materials = 2;
+    scene.num_materials = 3;
     scene.materials = malloc(scene.num_materials * sizeof(material));
-    scene.materials[0] = mat(col(1, 0.5, 0.5));
-    scene.materials[1] = mat(col(0.8, 0.8, 0.8));
+    scene.materials[0] = mat(col(1, 0.5, 0.5), 0, 0.1);
+    scene.materials[1] = mat(col(0.8, 0.8, 0.8), 0, 0.7);
+    scene.materials[2] = mat(col(1, 1, 1), 1, 1);
 
     return scene;
 }
@@ -159,19 +164,10 @@ sphere sph(vec3 pos, float r, unsigned int material_id) {
     return to_return;
 }
 
-material mat(color color) {
+material mat(color color, float emission, float roughness) {
     material to_return;
     to_return.color = color;
+    to_return.emission = emission;
+    to_return.roughness = roughness;
     return to_return;
 }
-
-// void generate(color *array, unsigned int width, unsigned int height) {
-//     for(int i = 0;i < width;i ++) {
-//         for(int j = 0;j < height;j ++) {
-//             int index = j * width + i;
-//             array[index].r = (float) j / width;
-//             array[index].g = 0;
-//             array[index].b = (float) i / width;
-//         }
-//     }
-// }

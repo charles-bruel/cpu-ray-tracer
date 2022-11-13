@@ -37,6 +37,8 @@ typedef struct {
 
 typedef struct {
     color color;
+    float emission;
+    float roughness;
 } material;
 
 typedef struct {
@@ -59,5 +61,5 @@ vec3 vec(float x, float y, float z);
 color col(float r, float g, float b);
 triangle tri(vec3 pos1, vec3 pos2, vec3 pos3);
 sphere sph(vec3 pos, float r, unsigned int material_id);
-material mat(color color);
+material mat(color color, float emission, float roughness);
 // void generate(color *array, unsigned int width, unsigned int height);
