@@ -1,7 +1,7 @@
 .intel_syntax noprefix
 
 .LC9: #Main variables
-    .long 2 #Number of rays
+    .long 32 #Number of rays
 .LC10:
     .long 3 #Recursion depth
 
@@ -57,16 +57,6 @@ generate:
     push r13
     push r14
     push r15
-    // push xmm6
-    // push xmm7
-    // push xmm8
-    // push xmm9
-    // push xmm10
-    // push xmm11
-    // push xmm12
-    // push xmm13
-    // push xmm14
-    // push xmm15
 
     mov r11, r9
     mov r15, rcx
@@ -145,16 +135,6 @@ generate:
     jnz loop_1
 
     #restore
-    // pop xmm15
-    // pop xmm14
-    // pop xmm13
-    // pop xmm12
-    // pop xmm11
-    // pop xmm10
-    // pop xmm9
-    // pop xmm8
-    // pop xmm7
-    // pop xmm6
     pop r15
     pop r14
     pop r13
@@ -441,11 +421,18 @@ ray:
         movss xmm4, [rsp+4] #Next ray start pos y
         movss xmm5, [rsp+8] #Next ray start pos z
 
+        push r12
         push r8
         push rcx
+        push rbp
+        sub rsp, 16
+        movss [rsp+0], xmm13
+        movss [rsp+4], xmm14
+        movss [rsp+8], xmm15
+
         dec r8
 
-        sub rsp, 24 #Pushing onto stack
+        sub rsp, 40 #Pushing onto stack
         movss [rsp+12], xmm0
         movss [rsp+16], xmm1
         movss [rsp+20], xmm2 #Ray direction
@@ -455,13 +442,21 @@ ray:
         movss [rsp+ 8], xmm5 #Start position
 
         call ray
+        add rsp, 16
+        
+        movss xmm13, [rsp+0]
+        movss xmm14, [rsp+4]
+        movss xmm15, [rsp+8]
+        add rsp, 16
 
         addss xmm13, xmm0
         addss xmm14, xmm1
         addss xmm15, xmm2 #Store for running average
-a:
+
+        pop rbp
         pop rcx
         pop r8
+        pop r12
 
         dec r12
         cmp r12, 0

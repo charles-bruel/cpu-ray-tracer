@@ -1,7 +1,7 @@
 #include "main.h"
 
-#define WIDTH 1200
-#define HEIGHT 800
+#define WIDTH 192
+#define HEIGHT 108
 #define NUM_CHANNELS 3
 #define BITS_P_PIXEL NUM_CHANNELS * 8
 #define HEADER_SIZE 14
@@ -55,9 +55,9 @@ scene create_test_scene() {
 
     scene.num_materials = 3;
     scene.materials = malloc(scene.num_materials * sizeof(material));
-    scene.materials[0] = mat(col(1, 0.5, 0.5), 0, 0.05);
-    scene.materials[1] = mat(col(0.8, 0.8, 0.8), 0, 0.7);
-    scene.materials[2] = mat(col(1, 1, 1), 1, 1);
+    scene.materials[0] = mat(col(1, 0.5, 0.5), 0, 0.8);
+    scene.materials[1] = mat(col(0.8, 0.8, 0.8), 0, 0.1);
+    scene.materials[2] = mat(col(1, 1, 1), 1, 0);
 
     return scene;
 }
