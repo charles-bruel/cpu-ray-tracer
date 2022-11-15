@@ -5,7 +5,7 @@
 .LC10:
     .long 4 #Recursion depth
 .LC11:
-    .long 16 #Number of samples
+    .long 32 #Number of samples
 
 .global test_quad
 test_quad:
@@ -113,7 +113,7 @@ generate:
             movss xmm0, [r12+0]
             movss xmm1, [r12+4]
             movss xmm2, [r12+8]
-a:
+
             movss [rsp+0], xmm0
             movss [rsp+4], xmm1
             movss [rsp+8], xmm2
@@ -509,7 +509,7 @@ ray:
             pop rcx
             pop r8
             pop r12
-
+a:
             dec r12
             cmp r12, 0
             jg ray_hit_scatter_loop
@@ -764,7 +764,7 @@ line_sphere_finish:
     #If the value is behind, we can't see it
     #This does ignore the case where the smaller value is < 0 and the larger
     #value is > 0, but in that case we'd be inside the sphere anyway
-    pxor xmm1, xmm1
+    movss xmm1, DWORD PTR .LC12 [rip]
     comiss xmm0, xmm1
     jbe line_sphere_fail
 
@@ -806,7 +806,8 @@ line_sphere_finish:
     line_sphere_return:
     pop rsp
     ret 40
-
+.LC12:
+    .long 981668463 #0.001
 
 #Normalizes a vecotr in xmm0, xmm1, and xmm2 to length 1
 #Inputs: The vector in xmm0 - xmm2
@@ -1052,4 +1053,27 @@ lerp:
     movss xmm7, [rsp]
     add rsp, 4
 
+    ret
+
+#Fix vector converts normalized vectors into colors
+#It adds one and divides by 2
+#Inputs: The vector in xmm0-xmm1
+#Outputs: The color in xmm0-xmm1
+#Writes: xmm0-xmm1
+fix_vector:
+    sub rsp, 4
+    movss [rsp], xmm3
+
+    movss xmm3, DWORD PTR .LC8 [rip]
+    addss xmm0, xmm3
+    addss xmm1, xmm3
+    addss xmm2, xmm3
+
+    movss xmm3, DWORD PTR .LC2 [rip]
+    mulss xmm0, xmm3
+    mulss xmm1, xmm3
+    mulss xmm2, xmm3
+
+    movss xmm3, [rsp]
+    add rsp, 4
     ret
