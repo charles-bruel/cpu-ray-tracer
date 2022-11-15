@@ -1,7 +1,9 @@
 #include "main.h"
 
-#define WIDTH 1920
-#define HEIGHT 1080
+// #define WIDTH 1920
+// #define HEIGHT 1080
+#define WIDTH 640
+#define HEIGHT 480
 #define NUM_CHANNELS 3
 #define BITS_P_PIXEL NUM_CHANNELS * 8
 #define HEADER_SIZE 14
@@ -51,26 +53,26 @@ int main() {
 scene create_test_scene() {
     unsigned int size = sizeof(camera);
     camera *camera = malloc(size);
-    (*camera).pos = vec(1, 0, 0);
-    (*camera).view_dir = vec(1, 0, 0);
-    (*camera).fov = 70.0f * 0.0174533f;
+    (*camera).pos = vec(-2, 0, 5);
+    (*camera).view_dir = vec(0.70710678118f, 0, -0.70710678118f);
+    (*camera).fov = 35.0f * 0.0174533f;
     scene scene;
     scene.camera = camera;
     scene.ambient = col(0.7f, 0.9f, 1.0f);
-    scene.ambient_strength = 0.1f;
+    scene.ambient_strength = 0.3f;
     scene.num_spheres = 5;
     scene.spheres = malloc(scene.num_spheres * sizeof(sphere));
     scene.spheres[0] = sph(vec(5, 0, 0.5), 0.5, 0);
     scene.spheres[1] = sph(vec(2, -0.5, 0), 0.1, 1);
     scene.spheres[2] = sph(vec(6, 0, 0), 0.1, 1);
     scene.spheres[3] = sph(vec(3, 0.25, 0.625), 0.1, 1);
-    scene.spheres[4] = sph(vec(2, 0.5, 0), 0.05, 2);
+    scene.spheres[4] = sph(vec(2, 0.5, 0), 1, 2);
 
     scene.num_materials = 3;
     scene.materials = malloc(scene.num_materials * sizeof(material));
-    scene.materials[0] = mat(col(1, 0.5, 0.5), 0, 0.8);
-    scene.materials[1] = mat(col(0.8, 0.8, 0.8), 0, 0.1);
-    scene.materials[2] = mat(col(1, 1, 1), 1, 0);
+    scene.materials[0] = mat(col(1, 0.5, 0.5), 0, 1);
+    scene.materials[1] = mat(col(0.8, 0.8, 0.8), 0, 0);
+    scene.materials[2] = mat(col(1, 1, 1), 50, 0);
 
     return scene;
 }
