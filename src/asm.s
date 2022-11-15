@@ -1,11 +1,11 @@
 .intel_syntax noprefix
 
 .LC9: #Main variables
-    .long 4 #Number of rays per bounce
+    .long 16 #Number of rays per bounce
 .LC10:
-    .long 4 #Recursion depth
+    .long 3 #Recursion depth
 .LC11:
-    .long 32 #Number of samples
+    .long 512 #Number of samples
 
 .global test_quad
 test_quad:
@@ -423,8 +423,18 @@ ray:
     movss xmm1, [r11+52]
     movss xmm2, [r11+56]
 
-    jmp ray_end
+    #If this ray is NOT from the camera, we want to reduce the strength of the ambient light
+    #according to the ambient light value
+    mov edx, .LC10 [rip] #Recursion depth
+    cmp rdx, r8
+    je ray_end #If they are the same, no need to multiply
 
+    movss xmm3, [r11+28] #Ambient strength value
+    mulss xmm0, xmm3
+    mulss xmm1, xmm3
+    mulss xmm2, xmm3
+
+    jmp ray_end
     ray_hit:
         mov rcx, [r11+16] #Contains base of materials array
         imul edx, 20 #Contains material offset
@@ -509,7 +519,7 @@ ray:
             pop rcx
             pop r8
             pop r12
-a:
+
             dec r12
             cmp r12, 0
             jg ray_hit_scatter_loop
@@ -547,9 +557,9 @@ a:
 
         jmp ray_end
     ray_recursion_end:
-        movss xmm0, [r11+48]
-        movss xmm1, [r11+52]
-        movss xmm2, [r11+56]
+        pxor xmm0, xmm0
+        pxor xmm1, xmm1
+        pxor xmm2, xmm2
 
         movss xmm3, [rcx+0] #Copy material color
         movss xmm4, [rcx+4]
