@@ -1,11 +1,11 @@
 .intel_syntax noprefix
 
 .LC9: #Main variables
-    .long 16 #Number of rays per bounce
+    .long 2 #Number of rays per bounce
 .LC10:
-    .long 3 #Recursion depth
+    .long 2 #Recursion depth
 .LC11:
-    .long 512 #Number of samples
+    .long 128 #Number of samples
 
 .global test_quad
 test_quad:
@@ -494,7 +494,7 @@ ray:
 
             dec r8
 
-            sub rsp, 40 #Pushing onto stack
+            sub rsp, 24 #Pushing onto stack
             movss [rsp+12], xmm0
             movss [rsp+16], xmm1
             movss [rsp+20], xmm2 #Ray direction
@@ -504,7 +504,6 @@ ray:
             movss [rsp+ 8], xmm5 #Start position
 
             call ray
-            add rsp, 16
 
             movss xmm13, [rsp+0]
             movss xmm14, [rsp+4]
@@ -1031,8 +1030,10 @@ random_ray:
 #Writes: xmm0 - xmm5
 slerp:
     call lerp
-    call normalize
-    ret
+    jmp normalize 
+    #This works because the return address of slerp is at the top of the stack because jmp 
+    #doesn't modify the stack, so when normalize runs ret, it goes there. Saves an indirect
+    #jump
 
 #Linearly lerps between two values
 #Inputs: The first vector in xmm0 - xmm2
